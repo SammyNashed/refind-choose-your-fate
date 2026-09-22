@@ -22,7 +22,7 @@ sudo ./install.sh           # 16:9 screens
 sudo ./install.sh --16x10   # 16:10 screens (1920x1200, 2560x1600)
 ```
 
-The script copies the theme to `EFI/refind/themes/`, comments out any previous `include themes/...` line, and backs up `refind.conf` first.
+The script finds **every** rEFInd install on the ESP — `EFI/refind/` and, if rEFInd is also your fallback loader, `EFI/BOOT/` — copies the theme into each one's `themes/` folder, comments out any previous `include themes/...` line, and backs up each `refind.conf` first.
 
 ### Getting the pills in the right hands
 
@@ -40,6 +40,23 @@ menuentry "Arch Linux" {
     icon   /EFI/refind/themes/refind-choose-your-fate/icons/os_arch.png
     ...
 }
+```
+
+> **Icon paths are absolute from the root of the ESP.** The `icon` lines above assume rEFInd lives in `EFI/refind/`. If yours only lives in `EFI/BOOT/` (common when it was installed with `refind-install --usedefault`), use `/EFI/BOOT/themes/refind-choose-your-fate/icons/...` instead — otherwise rEFInd can't find them and shows generic icons.
+
+## Troubleshooting
+
+**The theme (or the pills) disappears on some boots, then comes back.**
+Your firmware is alternating between two copies of rEFInd: `EFI/refind/refind_x64.efi` (its NVRAM entry) and `EFI/BOOT/BOOTX64.EFI` (the fallback it boots when that entry gets deleted — some ASUS, HP and Lenovo firmwares do this after updates or resets). Each copy reads its own `refind.conf`, so a theme installed into only one of them seems to vanish. Re-run `sudo ./install.sh` (it now themes both), and check that both `refind.conf` files have the same entries.
+
+**Windows boots straight away and rEFInd never shows up.**
+Windows moved *Windows Boot Manager* to the front of the UEFI boot order, or the firmware dropped rEFInd's entry. From Linux:
+
+```bash
+efibootmgr                         # is there a "rEFInd" entry? what's BootOrder?
+sudo efibootmgr --create --disk /dev/nvme0n1 --part <ESP partition number> \
+     --loader '\EFI\refind\refind_x64.efi' --label rEFInd   # only if it's missing
+sudo efibootmgr --bootorder XXXX,YYYY,...                     # rEFInd's number first
 ```
 
 ## Rebuilding the art
